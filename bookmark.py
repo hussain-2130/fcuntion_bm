@@ -34,7 +34,7 @@ def add_highlight_annot(pdf_path, highlights):
                     candidate = page_text[i:i+len(expected_text)]
 
                     if candidate == expected_text and i == local_start:
-                        print(f"matched candidate {match}" )
+                        print(f"matched candidate{match}")
 
                         highlight = page.add_highlight_annot(match)
                         highlight.set_info(title=label)
