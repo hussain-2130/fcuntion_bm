@@ -1,65 +1,68 @@
 import fitz  # PyMuPDF
-import tempfile
-import shutil
-def add_highlight_annot(highlights, filepath):
-    doc = fitz.open(filepath)
+
+def add_highlight_annot(pdf_path, highlights):
+    doc = fitz.open(pdf_path)
     global_offset = 0
 
-    for page_num, page in enumerate(doc):
-        text = page.get_text()
-        page_length = len(text)
-        print(f"\n📃 Page {page_num + 1} | Characters: {global_offset} to {global_offset + page_length}")
+    for page_num, page in enumerate(doc, start=1):
+        page_text = page.get_text()
+        page_length = len(page_text)
+        print(f"📃 Page {page_num} | Characters: {global_offset} to {global_offset + page_length}")
 
-        # Filter highlights for this page
-        current_page_highlights = []
-        for start, end, label in highlights:
-            if global_offset <= start < end <= global_offset + page_length:
-                current_page_highlights.append((start, end, label))
+        current_page_highlights = [
+            (start, end, label)
+            for start, end, label in highlights
+            if global_offset <= start < end <= global_offset + page_length
+        ]
 
         print(f"🔍 Found {len(current_page_highlights)} highlights for this page.")
 
         for start, end, label in current_page_highlights:
             local_start = start - global_offset
             local_end = end - global_offset
-            target_text = text[local_start:local_end].strip()
 
-            if not target_text:
-                print(f"⚠️ Empty or invalid selection between {local_start}–{local_end} for label '{label}'")
-                continue
+            expected_text = page_text[local_start:local_end]
+            print(f"🧩 Trying to highlight '{expected_text}' ({start}-{end})")
 
-            matches = page.search_for(target_text)
-            print(f"🧩 Trying to highlight '{target_text}' ({start}-{end}) → Matches found: {len(matches)}")
-
-            match_found = False
+            matches = page.search_for(expected_text)
+            print(f"matches{matches}")
+            found_exact = False
             for match in matches:
-                match_text = page.get_textbox(match).strip()
-                match_index = text.find(match_text)
+           
 
-                if match_index == local_start:
-                    highlight = page.add_highlight_annot(match)
-                    highlight.set_colors(stroke=(1, 1, 0))  # Yellow
-                    highlight.set_info(title=label)
-                    highlight.update()
-                    print(f"✅ Highlighted '{target_text}' on page {page_num + 1} as '{label}'")
-                    match_found = True
+                for i in range(len(page_text) - len(expected_text) + 1):
+                    candidate = page_text[i:i+len(expected_text)]
+
+                    if candidate == expected_text and i == local_start:
+                        print(f"matched candidate {match}" )
+
+                        highlight = page.add_highlight_annot(match)
+                        highlight.set_info(title=label)
+                        found_exact = True
+                        print(f"✅ Highlighted '{label}'")
+                        break
+                if found_exact:
                     break
 
-            if not match_found:
-                print(f"❌ Could not match exact position for: '{target_text}'")
+            if not found_exact:
+                print(f"❌ Could not match exact position for: '{expected_text}'")
 
         global_offset += page_length
-        return filepath
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-     temp_path = tmp.name
 
-    doc.save(temp_path, garbage=4, deflate=True)
+    output_path = pdf_path.replace(".pdf", "_highlighted.pdf")
+    doc.save(output_path, garbage=4, deflate=True)
     doc.close()
+    print(f"\n✅ Highlighting complete. File saved at: {output_path}")
 
-    shutil.move(temp_path, filepath)  # overwrite original file safely
-    return filepath
-    # Save updated PDF
 
+
+
+
+pdf_path = r"C:\Users\HP\Desktop\function_bm\12. Master Services Agreement.pdf"
 highlights = [
-   (550,560,"kkkkkkkkkkking")            # 'Machine Learning'
+    (0, 760,"zzzzzzzzzzzzzzz"),
+    (100, 110, "FACT"),
+    (300, 320, "POINT A")
 ]
-add_highlight_annot(highlights, r"C:\Users\HP\Desktop\function_bm\12. Master Services Agreement.pdf")
+
+add_highlight_annot(pdf_path, highlights)
