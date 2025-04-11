@@ -21,52 +21,49 @@ def add_highlight_annot(pdf_path, highlights):
             local_start = start - global_offset
             local_end = end - global_offset
             expected_text = page_text[local_start:local_end]
-            print(f"🧩 Trying to highlight '{expected_text}' ({start}-{end})")
+            print(f"🧩 Trying to highlight '{expected_text[:30]}...' ({start}-{end})")
             
-            # Get all instances of the text on the page
-            text_instances = page.search_for(expected_text)
+            # For large text blocks, we need to handle them differently
+            # Break the text into smaller chunks that PyMuPDF can handle
+            chunk_size = 50  # Adjust chunk size as needed
+            highlighted_something = False
             
-            # Find the correct instance that matches our exact position
-            if text_instances:
-                # Get words with positions to verify correct instance
-                words = page.get_text("words")
-                current_pos = 0
-                word_positions = []
+            # Process the text in chunks
+            for chunk_start in range(local_start, local_end, chunk_size):
+                chunk_end = min(chunk_start + chunk_size, local_end)
+                chunk_text = page_text[chunk_start:chunk_end]
                 
-                # Build position mapping
-                for word in words:
-                    word_text = word[4]
-                    word_len = len(word_text)
-                    word_positions.append((current_pos, current_pos + word_len, fitz.Rect(word[:4])))
-                    current_pos += word_len + 1  # +1 for space
+                if not chunk_text.strip():  # Skip empty chunks
+                    continue
                 
-                # Find words that contain our target position
-                for instance_rect in text_instances:
-                    # Check if this rectangle corresponds to text at our position
-                    is_correct_instance = False
-                    
-                    for word_start, word_end, word_rect in word_positions:
-                        # If word overlaps with our target position
-                        if (word_start <= local_start < word_end or 
-                            word_start < local_end <= word_end or
-                            (local_start <= word_start and word_end <= local_end)):
-                            
-                            # Check if this word's rectangle intersects with our instance
-                            if word_rect.intersects(instance_rect):
-                                is_correct_instance = True
-                                break
-                    
-                    if is_correct_instance:
-                        # Create highlight annotation
-                        highlight = page.add_highlight_annot(instance_rect)
-                        highlight.set_info(title=label)
+                # Find this chunk on the page
+                matches = page.search_for(chunk_text)
+                
+                if matches:
+                    # Apply highlight to each match
+                    for rect in matches:
+                        highlight = page.add_highlight_annot(rect)
+                        highlight.set_info(title=f"{label} (part)")
                         highlight.update()
-                        print(f"✅ Highlighted '{label}' at exact position")
-                        break
+                        highlighted_something = True
+                        print(f"✅ Highlighted chunk: '{chunk_text[:20]}...'")
                 else:
-                    print(f"❌ Could not find correct instance for: '{expected_text}'")
+                    # If exact chunk not found, try word by word highlighting
+                    words = chunk_text.split()
+                    for word in words:
+                        if len(word) < 3:  # Skip very short words
+                            continue
+                        word_matches = page.search_for(word)
+                        for rect in word_matches:
+                            highlight = page.add_highlight_annot(rect)
+                            highlight.set_info(title=f"{label} (word)")
+                            highlight.update()
+                            highlighted_something = True
+            
+            if highlighted_something:
+                print(f"✅ Highlighted full range for '{label}'")
             else:
-                print(f"❌ No matches found for: '{expected_text}'")
+                print(f"❌ Could not highlight text range for: '{expected_text[:30]}...'")
         
         global_offset += page_length
     
@@ -77,7 +74,8 @@ def add_highlight_annot(pdf_path, highlights):
 
 pdf_path = r"C:\Users\HP\Desktop\function_bm\12. Master Services Agreement.pdf"
 highlights = [
-    
-    (700, 1576, "SRH")
+  
+    (640, 660, "CSK")
 ]
 add_highlight_annot(pdf_path, highlights)
+
