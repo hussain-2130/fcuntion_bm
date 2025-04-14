@@ -75,7 +75,7 @@ def add_highlight_annot(pdf_path, highlights):
 pdf_path = r"C:\Users\HP\Desktop\function_bm\12. Master Services Agreement.pdf"
 highlights = [
   
-    (640, 660, "CSK")
+    (2000, 2050, "headingggg")
 ]
 add_highlight_annot(pdf_path, highlights)
 
